@@ -1,0 +1,173 @@
+#include <iostream>
+#include <string>
+#include <cppconn/driver.h>
+#include <cppconn/connection.h>
+#include <cppconn/statement.h>
+#include <cppconn/resultset.h>
+#include <cppconn/prepared_statement.h>
+
+using namespace std;
+
+sql::Connection* connectDB() {
+    sql::Driver *driver = get_driver_instance();
+    sql::Connection *con = driver->connect("tcp://127.0.0.1:3306", "root", "your_password"); 
+    con->setSchema("hospital_db");
+    return con;
+}
+
+void addPatient() {
+    string name, gender, disease;
+    int age;
+    cout << "Enter patient name: ";
+    getline(cin, name);
+    cout << "Enter age: ";
+    cin >> age;
+    cin.ignore();
+    cout << "Enter gender: ";
+    getline(cin, gender);
+    cout << "Enter disease: ";
+    getline(cin, disease);
+
+    sql::Connection *con = connectDB();
+    sql::PreparedStatement *pstmt = con->prepareStatement(
+        "INSERT INTO Patients(name, age, gender, disease) VALUES (?, ?, ?, ?)");
+    pstmt->setString(1, name);
+    pstmt->setInt(2, age);
+    pstmt->setString(3, gender);
+    pstmt->setString(4, disease);
+    pstmt->execute();
+
+    cout << "✅ Patient added successfully!\n";
+    delete pstmt;
+    delete con;
+}
+
+void addDoctor() {
+    string name, specialization;
+    cout << "Enter doctor name: ";
+    getline(cin, name);
+    cout << "Enter specialization: ";
+    getline(cin, specialization);
+
+    sql::Connection *con = connectDB();
+    sql::PreparedStatement *pstmt = con->prepareStatement(
+        "INSERT INTO Doctors(name, specialization) VALUES (?, ?)");
+    pstmt->setString(1, name);
+    pstmt->setString(2, specialization);
+    pstmt->execute();
+
+    cout << "✅ Doctor added successfully!\n";
+    delete pstmt;
+    delete con;
+}
+
+void bookAppointment() {
+    int patient_id, doctor_id;
+    string date;
+
+    cout << "Enter patient ID: ";
+    cin >> patient_id;
+    cout << "Enter doctor ID: ";
+    cin >> doctor_id;
+    cout << "Enter appointment date (YYYY-MM-DD): ";
+    cin >> date;
+
+    sql::Connection *con = connectDB();
+    sql::PreparedStatement *pstmt = con->prepareStatement(
+        "INSERT INTO Appointments(patient_id, doctor_id, appointment_date) VALUES (?, ?, ?)");
+    pstmt->setInt(1, patient_id);
+    pstmt->setInt(2, doctor_id);
+    pstmt->setString(3, date);
+    pstmt->execute();
+
+    cout << "✅ Appointment booked successfully!\n";
+    delete pstmt;
+    delete con;
+}
+
+void viewPatients() {
+    sql::Connection *con = connectDB();
+    sql::Statement *stmt = con->createStatement();
+    sql::ResultSet *res = stmt->executeQuery("SELECT * FROM Patients");
+
+    cout << "\n--- Patients List ---\n";
+    while (res->next()) {
+        cout << res->getInt("patient_id") << " | "
+             << res->getString("name") << " | "
+             << res->getInt("age") << " | "
+             << res->getString("gender") << " | "
+             << res->getString("disease") << endl;
+    }
+
+    delete res;
+    delete stmt;
+    delete con;
+}
+
+void viewDoctors() {
+    sql::Connection *con = connectDB();
+    sql::Statement *stmt = con->createStatement();
+    sql::ResultSet *res = stmt->executeQuery("SELECT * FROM Doctors");
+
+    cout << "\n--- Doctors List ---\n";
+    while (res->next()) {
+        cout << res->getInt("doctor_id") << " | "
+             << res->getString("name") << " | "
+             << res->getString("specialization") << endl;
+    }
+
+    delete res;
+    delete stmt;
+    delete con;
+}
+
+void viewAppointments() {
+    sql::Connection *con = connectDB();
+    sql::Statement *stmt = con->createStatement();
+    sql::ResultSet *res = stmt->executeQuery(
+        "SELECT a.appointment_id, p.name AS patient, d.name AS doctor, a.appointment_date "
+        "FROM Appointments a "
+        "JOIN Patients p ON a.patient_id = p.patient_id "
+        "JOIN Doctors d ON a.doctor_id = d.doctor_id");
+
+    cout << "\n--- Appointments List ---\n";
+    while (res->next()) {
+        cout << res->getInt("appointment_id") << " | "
+             << res->getString("patient") << " | "
+             << res->getString("doctor") << " | "
+             << res->getString("appointment_date") << endl;
+    }
+
+    delete res;
+    delete stmt;
+    delete con;
+}
+
+int main() {
+    int choice;
+    while (true) {
+        cout << "\n--- Hospital Management System ---\n";
+        cout << "1. Add Patient\n";
+        cout << "2. Add Doctor\n";
+        cout << "3. Book Appointment\n";
+        cout << "4. View Patients\n";
+        cout << "5. View Doctors\n";
+        cout << "6. View Appointments\n";
+        cout << "7. Exit\n";
+        cout << "Enter choice: ";
+        cin >> choice;
+        cin.ignore();
+
+        switch (choice) {
+            case 1: addPatient(); break;
+            case 2: addDoctor(); break;
+            case 3: bookAppointment(); break;
+            case 4: viewPatients(); break;
+            case 5: viewDoctors(); break;
+            case 6: viewAppointments(); break;
+            case 7: exit(0);
+            default: cout << "❌ Invalid choice!\n";
+        }
+    }
+    return 0;
+}
